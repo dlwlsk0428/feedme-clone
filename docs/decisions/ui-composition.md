@@ -18,6 +18,7 @@
 - 모든 콘텐츠를 Card에 넣거나 모든 프로젝트에 같은 페이지 레이아웃을 적용하는 결정이 아닙니다.
 - 게임, 지도, 캔버스, 데이터 시각화처럼 사용자 경험의 핵심인 표면은 custom UI로 만들 수 있습니다. 그 안의 일반적인 control, navigation, overlay, feedback은 가능하면 shadcn 구성을 유지합니다.
 - 공식 component가 필요한 상호작용을 표현하지 못하거나 custom UI가 사용자 결과를 실질적으로 개선할 때는 직접 구현할 수 있습니다. 이때도 현재 token, 접근성, 상태 표현과 인접한 UI의 composition을 유지합니다.
+- URL 변환기 화면은 의도적으로 이 계약을 어깁니다. 예외 범위는 [url-to-markdown-converter](url-to-markdown-converter.md)에 있고, 다른 화면에는 번지지 않습니다.
 - shadcn 구성을 사용했다는 사실만으로 UI가 완료되지 않습니다. 정보 계층, 콘텐츠 밀도, primary action의 가시성, 반응형 레이아웃과 상태 간 일관성을 실제 화면에서 따로 판단합니다.
 
 ## Why
