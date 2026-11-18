@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircleIcon, CopyIcon, DownloadIcon, InfoIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { MarkdownView } from "@/components/markdown-view";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -45,6 +45,7 @@ export function Converter() {
   const [custom, setCustom] = useState("");
   const [feedback, setFeedback] = useState("");
   const [clipboardNote, setClipboardNote] = useState(false);
+  const requestId = useRef(0);
 
   useEffect(() => {
     if (!feedback) return;
@@ -58,6 +59,7 @@ export function Converter() {
 
   async function convert() {
     if (loading) return;
+    const id = ++requestId.current;
     setStatus({ kind: "loading" });
     setClipboardNote(false);
     try {
@@ -67,17 +69,20 @@ export function Converter() {
         body: JSON.stringify({ url }),
       });
       const data = await response.json();
+      if (id !== requestId.current) return;
       setStatus(
         response.ok
           ? { kind: "done", result: data }
           : { kind: "error", message: data.message ?? "변환에 실패했습니다." },
       );
     } catch {
+      if (id !== requestId.current) return;
       setStatus({ kind: "error", message: "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요." });
     }
   }
 
   function clear() {
+    requestId.current++;
     setUrl("");
     setStatus({ kind: "idle" });
     setPreset(null);
