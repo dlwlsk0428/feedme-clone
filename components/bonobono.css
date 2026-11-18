@@ -1,0 +1,64 @@
+/*
+  보노보노 PPT 화면 전용 스타일. 강의용으로 일부러 나쁜 UI를 보여 주는 화면이며
+  ui-composition 결정의 예외입니다(docs/specs/url-to-llm-markdown/spec.md 참고).
+  색상은 의도적으로 semantic token이 아닌 직접 지정 값입니다.
+*/
+.ppt { width: 880px; margin: 12px auto; font-family: "Comic Sans MS", "Comic Neue", "Gulim", "Malgun Gothic", cursive; font-size: 15px; line-height: 2.1 }
+.ppt .menubar { display: flex; gap: 14px; font: 11px "Tahoma", sans-serif; border-bottom: 2px outset #ccc; padding: 2px 6px; color: var(--muted-foreground); background: var(--muted) }
+.ppt .slide { position: relative; min-height: 520px; padding: 20px 32px 70px 215px; border: 3px ridge #8aa; background: linear-gradient(125deg, #f00 0%, #f0f 18%, #00f 36%, #0cf 52%, #0c0 68%, #ff0 84%, #f80 100%); background-size: 220% 220%; animation: ppt-flow 9s ease-in-out infinite alternate; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; overflow: hidden }
+.dark .ppt .slide { filter: brightness(.55) saturate(1.2) }
+.ppt .sub { font-size: 9px; color: var(--muted-foreground); letter-spacing: 3px; margin-bottom: 8px }
+.ppt .t1 { font-size: 40px; font-weight: 900; line-height: 1.1; color: #ff0; -webkit-text-stroke: 3px #e00; paint-order: stroke fill; text-shadow: none; margin: 0 0 0 -10px; letter-spacing: 3px; transform-origin: left center; animation: ppt-wobble 2.4s ease-in-out infinite }
+.ppt .t2 { font-size: 78px; font-weight: 900; line-height: 1; color: #11f; -webkit-text-stroke: 6px #e00; paint-order: stroke fill; text-shadow: none; margin: 2px 0 0 80px; transform-origin: left center; animation: ppt-pulse 1.6s ease-in-out infinite }
+.ppt .t3 { font-size: 34px; font-weight: 700; color: #fff; text-shadow: 2px 2px 0 rgb(0 0 0 / .3); margin: 0 0 6px 20px; animation: ppt-shake .5s steps(2) infinite }
+.ppt .plea { position: absolute; right: 24px; bottom: 34px; font-size: 12px; color: #c00; text-shadow: none; font-weight: 400 }
+.ppt .clip { position: absolute; left: 6px; top: 110px; width: 190px; text-align: center }
+.ppt .pic { position: relative; width: 190px; height: 190px; animation: ppt-hop 1.8s ease-in-out infinite }
+.ppt .pic img { display: block; width: 190px; height: 190px }
+.ppt .pic .eyes { position: absolute; left: 30%; top: 18%; width: 50%; height: 28% }
+.ppt .eye-hint { font-size: 8px; color: #fff; line-height: 1.2 }
+.ppt .deco { font-size: 40px; display: block; animation: ppt-spin 6s linear infinite; margin-top: 30px }
+.ppt .new { animation: ppt-blink 1s steps(2) infinite, ppt-wiggle .8s ease-in-out infinite; color: #e0a; font-weight: 900; font-size: 12px }
+.ppt p.prose { margin: 0 0 10px; max-width: 640px }
+.ppt .ac { text-decoration: underline; text-underline-offset: 3px; cursor: text; color: inherit }
+.ppt .ac:hover { animation: ppt-jitter .25s linear infinite }
+.ppt .blank { width: 17em; border: 0; border-bottom: 1px dotted #fff; background: transparent; color: #fff; text-shadow: inherit; font: inherit; outline: none; padding: 0 }
+.ppt .rendered { background: rgb(255 255 255 / .35); margin: 10px 0 14px; padding: 6px 10px; max-width: 640px; max-height: 120px; overflow: auto; font-family: "Courier New", monospace; font-size: 10px; line-height: 1.5; color: #fff; border: 1px dashed var(--muted-foreground) }
+.ppt .rendered h1, .ppt .rendered h2, .ppt .rendered h3 { font-size: 11px; margin: 4px 0 }
+.ppt .rendered p { margin: 0 0 4px }
+.ppt .result { animation: ppt-popin .7s cubic-bezier(.3, 1.6, .5, 1) }
+.ppt .tiny { font-size: 8px; color: rgb(255 255 255 / .55); text-shadow: none; line-height: 1.4 }
+.ppt .ticker { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; white-space: nowrap; background: #ff0; color: #c00; font: 700 11px Tahoma, sans-serif; border-top: 2px dashed #c00; text-shadow: none }
+.dark .ppt .ticker { background: #330; color: #fa0 }
+.ppt .ticker span { display: inline-block; padding-left: 100%; animation: ppt-tick 16s linear infinite }
+.ppt .fish { position: absolute; left: 0; bottom: 56px; font-size: 26px; animation: ppt-swim 11s linear infinite; pointer-events: none; text-shadow: none }
+
+/* 급구 광고 모드 */
+.ppt .slide.ad { padding-bottom: 120px; background: #ffe600; animation: none; color: #000; text-shadow: none; font-weight: 700 }
+.ppt .slide.ad .t1 { color: #000; -webkit-text-stroke: 0; font-size: 46px; letter-spacing: 0; animation: none; margin: 0 }
+.ppt .slide.ad .t2 { display: inline-block; color: #fff; background: #e00; border: 5px solid #000; border-radius: 28px; padding: 0 34px; font-size: 76px; -webkit-text-stroke: 0; margin: 4px 0 8px 120px; animation: none }
+.ppt .slide.ad .t3 { color: #000; font-size: 30px; font-weight: 900; text-shadow: none; animation: none; margin: 0 0 6px }
+.ppt .slide.ad .sub { color: #000 }
+.ppt .slide.ad .plea { left: 215px; right: auto; font-size: 24px; font-weight: 900; color: #fff; background: #e00; border: 3px solid #000; padding: 0 16px }
+.ppt .slide.ad .rendered { background: #fff; color: #000; border-color: #000 }
+.ppt .slide.ad .tiny { color: rgb(0 0 0 / .5) }
+.ppt .slide.ad .new { animation: ppt-wiggle .8s ease-in-out infinite; display: inline-block; width: 62px; height: 62px; line-height: 62px; border-radius: 50%; background: #e00; color: #fff; border: 3px solid #000; font-size: 20px; text-shadow: none; transform: rotate(-12deg) }
+.ppt .slide.ad .blank { border-bottom-color: #000; color: #000 }
+.dark .ppt .slide.ad { filter: brightness(.75) }
+
+@keyframes ppt-flow { from { background-position: 0% 0% } to { background-position: 100% 100% } }
+@keyframes ppt-wobble { 0%, 100% { transform: rotate(-4deg) } 50% { transform: rotate(2deg) translateY(-4px) } }
+@keyframes ppt-pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.1) skewX(-6deg) } }
+@keyframes ppt-shake { 0% { transform: rotate(-4deg) translate(0, 0) } 50% { transform: rotate(-2deg) translate(2px, -2px) } 100% { transform: rotate(-5deg) translate(-2px, 1px) } }
+@keyframes ppt-hop { 0%, 100% { transform: translateY(0) rotate(-3deg) } 40% { transform: translateY(-14px) rotate(4deg) } 70% { transform: translateY(2px) rotate(-1deg) scale(1.03, .96) } }
+@keyframes ppt-popin { from { transform: rotate(-8deg) scale(.3); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes ppt-jitter { 25% { transform: translate(1px, -1px) rotate(-2deg) } 75% { transform: translate(-1px, 1px) rotate(2deg) } }
+@keyframes ppt-swim { 0% { transform: translateX(-60px) scaleX(1) } 49% { transform: translateX(860px) scaleX(1) } 50% { transform: translateX(860px) scaleX(-1) } 99% { transform: translateX(-60px) scaleX(-1) } 100% { transform: translateX(-60px) scaleX(1) } }
+@keyframes ppt-spin { to { transform: rotate(360deg) } }
+@keyframes ppt-blink { 50% { opacity: 0 } }
+@keyframes ppt-wiggle { 50% { transform: rotate(8deg) scale(1.2) } }
+@keyframes ppt-tick { to { transform: translateX(-100%) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ppt .slide, .ppt .t1, .ppt .t2, .ppt .t3, .ppt .pic, .ppt .fish, .ppt .result, .ppt .new, .ppt .deco, .ppt .ticker span, .ppt .ac:hover { animation: none }
+}
