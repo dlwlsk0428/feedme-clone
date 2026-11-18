@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { randomConfirmLayout } from "@/components/chaos-devices";
 import { Converter } from "@/components/converter";
 
 const result = {
@@ -11,6 +12,8 @@ const result = {
   wordCount: 143,
   markdown: "# Use the saw\n\nFear the **saw**.",
 };
+
+type User = ReturnType<typeof userEvent.setup>;
 
 function mockFetch(response: { ok: boolean; body: unknown }) {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: response.ok, json: async () => response.body })));
@@ -22,16 +25,36 @@ function stubClipboard() {
   return writeText;
 }
 
+// 기본은 무작위 0: 룰렛이 나오고 첫 뽑기에서 바로 당첨된다. 개별 테스트가 다시 고정할 수 있다.
+beforeEach(() => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+});
+
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.documentElement.classList.remove("dark");
 });
+
+const robotCheck = () => within(screen.getByTestId("robot-check")).getByText(/^☐/);
+
+async function passRobotCheck(user: User) {
+  for (let i = 0; i < 3; i++) await user.click(robotCheck());
+}
+
+// 뽑기(룰렛 당첨) → 로봇 확인 3번 → 확인창 [예]까지 통과한다.
+async function passGates(user: User, answer = "[예]") {
+  await user.click(screen.getByText("변환"));
+  await user.click(await screen.findByText("돌리기"));
+  await passRobotCheck(user);
+  await user.click(screen.getByText(answer));
+}
 
 async function convertSample() {
   const user = userEvent.setup();
   render(<Converter />);
   await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
-  await user.click(screen.getByText("변환"));
+  await passGates(user);
   await screen.findByText("Use the saw, fear the saw", { selector: "b" });
   return user;
 }
@@ -58,20 +81,23 @@ test("입력란에서 Enter를 눌러도 변환되지 않는다", async () => {
   render(<Converter />);
   await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw{Enter}");
   expect(fetch).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("lottery")).not.toBeInTheDocument();
 });
 
-test("변환 중에는 탭 제목만 ...이 되고 끝나면 돌아온다", async () => {
+test("변환 중에는 탭 제목만 ...이 되고 99% 진행률 바가 보이며, 끝나면 모두 돌아온다", async () => {
   let resolve!: (value: unknown) => void;
   vi.stubGlobal("fetch", vi.fn(() => new Promise((r) => (resolve = r))));
   document.title = "원래 제목";
   const user = userEvent.setup();
   render(<Converter />);
   await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
-  await user.click(screen.getByText("변환"));
+  await passGates(user);
   expect(document.title).toBe("...");
+  expect(screen.getByTestId("progress")).toHaveTextContent("99%");
   resolve({ ok: true, json: async () => result });
   await screen.findByText("Use the saw, fear the saw", { selector: "b" });
   expect(document.title).toBe("원래 제목");
+  expect(screen.queryByTestId("progress")).not.toBeInTheDocument();
 });
 
 test("복사는 더블클릭해야 Markdown 원문이 클립보드에 들어간다", async () => {
@@ -136,13 +162,14 @@ test("긴 글은 전체를 클립보드에 복사하고 새 대화만 연다", a
   expect(screen.getByText("길어서 이미 복사됨(아마)")).toBeInTheDocument();
 });
 
-test("오류가 나면 짧은 문구가 보이고 이전 결과는 남지 않는다", async () => {
+test("오류가 나면 짧은 문구가 보이고 이전 결과와 진행률 바는 남지 않는다", async () => {
   mockFetch({ ok: true, body: result });
   const user = await convertSample();
   mockFetch({ ok: false, body: { code: "fetch-failed", message: "페이지를 가져오지 못했습니다(403)." } });
-  await user.click(screen.getByText("변환"));
+  await passGates(user);
   await screen.findByText("페이지를 가져오지 못했습니다(403).");
   expect(screen.queryByText("Use the saw, fear the saw", { selector: "b" })).not.toBeInTheDocument();
+  expect(screen.queryByTestId("progress")).not.toBeInTheDocument();
 });
 
 test("처음으로 돌아가기는 입력, 결과, 프롬프트 선택, 직접 입력 문구를 모두 비운다", async () => {
@@ -176,8 +203,115 @@ test("NEW!!를 누르면 광고 모드가 되고 미친 스티커로 돌아오�
   expect(screen.getByText("급구")).toBeInTheDocument();
   expect(screen.getByText("지금 변환하세요")).toBeInTheDocument();
   await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
-  await user.click(screen.getByText("변환"));
+  await passGates(user);
   await waitFor(() => screen.getByText("Use the saw, fear the saw", { selector: "b" }));
   await user.click(screen.getByText("미친"));
   expect(screen.getByText("URL을 마크다운으로")).toBeInTheDocument();
+});
+
+test("변환을 누르면 뽑기가 나오고 룰렛과 쪽지가 모두 나올 수 있다", async () => {
+  const user = userEvent.setup();
+  const first = render(<Converter />);
+  await user.click(screen.getByText("변환"));
+  expect(screen.getByTestId("lottery")).toHaveAttribute("data-style", "roulette");
+  first.unmount();
+  vi.mocked(Math.random).mockReturnValue(0.99);
+  render(<Converter />);
+  await user.click(screen.getByText("변환"));
+  expect(screen.getByTestId("lottery")).toHaveAttribute("data-style", "note");
+});
+
+test("연속 3번 꽝이면 4번째 뽑기는 반드시 당첨이고, 처음으로 돌아가기가 꽝 횟수를 초기화한다", async () => {
+  vi.mocked(Math.random).mockReturnValue(0.99);
+  const user = userEvent.setup();
+  render(<Converter />);
+  await user.click(screen.getByText("변환"));
+  for (let i = 0; i < 3; i++) {
+    await user.click(screen.getAllByTestId("note")[0]);
+    expect(screen.getByTestId("lottery")).toBeInTheDocument();
+    expect(screen.queryByTestId("robot-check")).not.toBeInTheDocument();
+  }
+  expect(screen.getByTestId("lottery")).toHaveTextContent("연속 꽝 3번");
+  await user.click(screen.getAllByTestId("note")[0]);
+  expect(screen.getByTestId("robot-check")).toBeInTheDocument();
+
+  await user.click(screen.getByText("처음으로 돌아가기"));
+  await user.click(screen.getByText("변환"));
+  await user.click(screen.getAllByTestId("note")[0]);
+  expect(screen.getByTestId("lottery")).toHaveTextContent("연속 꽝 1번");
+});
+
+test("로봇 확인은 3번 눌러야 통과하고 누를 때마다 문구가 바뀐다", async () => {
+  const user = userEvent.setup();
+  render(<Converter />);
+  await user.click(screen.getByText("변환"));
+  await user.click(screen.getByText("돌리기"));
+  const seen = [robotCheck().textContent];
+  await user.click(robotCheck());
+  seen.push(robotCheck().textContent);
+  await user.click(robotCheck());
+  seen.push(robotCheck().textContent);
+  expect(new Set(seen).size).toBe(3);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await user.click(robotCheck());
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+});
+
+test("확인창은 [아니오]를 눌러도 변환이 시작된다", async () => {
+  mockFetch({ ok: true, body: result });
+  const user = userEvent.setup();
+  render(<Converter />);
+  await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
+  await passGates(user, "[아니오]");
+  await screen.findByText("Use the saw, fear the saw", { selector: "b" });
+});
+
+test("확인창의 [예]/[아니오] 위치는 무작위에 따라 달라진다", () => {
+  expect(randomConfirmLayout(() => 0.1)).not.toEqual(randomConfirmLayout(() => 0.9));
+});
+
+test("쿠키 배너의 [모두 거부]는 4번 피한 뒤 눌러지고, [모두 수락]은 바로 닫힌다", async () => {
+  const user = userEvent.setup();
+  const first = render(<Converter />);
+  const reject = screen.getByText("[모두 거부]");
+  for (let i = 0; i < 4; i++) {
+    await user.unhover(reject);
+    await user.hover(reject);
+  }
+  expect(screen.getByTestId("cookie-banner")).toBeInTheDocument();
+  await user.click(reject);
+  expect(screen.queryByTestId("cookie-banner")).not.toBeInTheDocument();
+  first.unmount();
+
+  render(<Converter />);
+  await user.click(screen.getByText("[모두 수락]"));
+  expect(screen.queryByTestId("cookie-banner")).not.toBeInTheDocument();
+});
+
+test("광고 팝업은 닫을 때마다 2개가 뜨고 총 7번 닫으면 모두 사라지며, 떠 있어도 변환 흐름을 쓸 수 있다", async () => {
+  const user = userEvent.setup();
+  render(<Converter />);
+  expect(screen.getAllByTestId("ad-popup")).toHaveLength(1);
+  await user.click(screen.getByTestId("ad-close"));
+  expect(screen.getAllByTestId("ad-popup")).toHaveLength(2);
+  await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
+  await user.click(screen.getByText("변환"));
+  expect(screen.getByTestId("lottery")).toBeInTheDocument();
+  for (let i = 0; i < 6; i++) await user.click(screen.getAllByTestId("ad-close")[0]);
+  expect(screen.queryAllByTestId("ad-popup")).toHaveLength(0);
+});
+
+test("이탈 방지는 URL이 있을 때만 걸린다", async () => {
+  const user = userEvent.setup();
+  render(<Converter />);
+  const leave = () => {
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  expect(leave()).toBe(false);
+  await user.type(screen.getByLabelText("변환할 URL"), "https://stephango.com/saw");
+  expect(leave()).toBe(true);
+  await user.click(screen.getByText("처음으로 돌아가기"));
+  expect(leave()).toBe(false);
 });
