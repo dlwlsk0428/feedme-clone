@@ -62,3 +62,26 @@
 @media (prefers-reduced-motion: reduce) {
   .ppt .slide, .ppt .t1, .ppt .t2, .ppt .t3, .ppt .pic, .ppt .fish, .ppt .result, .ppt .new, .ppt .deco, .ppt .ticker span, .ppt .ac:hover { animation: none }
 }
+
+/* 최악의 UI 대회 장치 (docs/specs/converter-chaos-ui/spec.md) */
+.ppt, .ppt .ac, .ppt .blank { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%90%9F%3C/text%3E%3C/svg%3E") 4 4, auto }
+.ppt .wordart { background: linear-gradient(90deg, #f00, #f80, #ff0, #0c0, #0cf, #00f, #f0f); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent }
+.ppt p.prose:nth-of-type(3n + 1) { font-size: 17px }
+.ppt p.prose:nth-of-type(3n + 2) { font-size: 12px }
+.ppt p.prose:nth-of-type(3n) { font-size: 15px }
+.ppt .chaos-panel { margin: 0 0 14px; padding: 6px 12px; max-width: 640px; border: 3px double #fff; background: rgb(0 0 0 / .25) }
+.ppt .wheel { position: relative; width: 120px; height: 120px; margin: 4px 0; border: 4px dotted #ff0; border-radius: 50%; transition: transform 1s ease-out }
+.ppt .wheel span { position: absolute; left: 50%; top: 50%; margin: -8px 0 0 -14px; font-size: 11px; line-height: 16px }
+.ppt .notes { display: flex; gap: 14px; font-size: 30px }
+.ppt .confirm-area { position: relative; height: 100px; border: 2px outset #ccc; background: rgb(255 255 255 / .2) }
+.ppt .confirm-area .ac { position: absolute }
+.ppt .progress { position: relative; max-width: 640px; height: 18px; margin: 0 0 14px; border: 2px inset #ccc; background: rgb(255 255 255 / .3); line-height: 14px }
+.ppt .progress .bar { height: 100%; background: repeating-linear-gradient(90deg, #00c 0 10px, #fff 10px 12px) }
+.ppt .progress span { position: absolute; right: 6px; top: 0; font: 700 11px Tahoma, sans-serif; text-shadow: none; color: #000 }
+.ppt .cookie { position: fixed; left: 50%; bottom: 40px; z-index: 30; width: 560px; margin-left: -280px; padding: 8px 14px 12px; background: #fff; color: #000; border: 2px solid #000; font: 12px/1.5 Tahoma, sans-serif; text-shadow: none }
+.ppt .cookie p { margin: 0 0 8px }
+.ppt .cookie-buttons { display: flex; gap: 24px; height: 40px }
+.ppt .cookie .reject { display: inline-block; transition: transform .15s }
+.ppt .ad-popup { position: fixed; z-index: 20; width: 200px; padding: 22px 10px 8px; background: #ffe; color: #000; border: 3px ridge #c00; font: 11px/1.4 Tahoma, sans-serif; text-shadow: none }
+.ppt .ad-popup p { margin: 0 }
+.ppt .ad-popup .x { position: absolute; right: 2px; top: 0; font-size: 9px; line-height: 14px; padding: 0 4px; border: 1px solid #888 }

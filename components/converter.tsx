@@ -3,8 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 
 import "@/components/bonobono.css";
+import {
+  AdPopups,
+  ConfirmDialog,
+  CookieBanner,
+  FakeProgress,
+  Lottery,
+  randomConfirmLayout,
+  RobotCheck,
+  type ConfirmLayout,
+} from "@/components/chaos-devices";
 import { MarkdownView } from "@/components/markdown-view";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { draw, pickLotteryStyle, type LotteryStyle } from "@/lib/chaos/chaos";
 import {
   composePayload,
   markdownFileName,
@@ -26,6 +37,13 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "done"; result: Result };
 
+// 변환을 누른 뒤 거치는 관문. idle이면 아무 관문도 열려 있지 않다.
+type Step =
+  | { kind: "idle" }
+  | { kind: "lottery"; style: LotteryStyle }
+  | { kind: "robot" }
+  | { kind: "confirm"; layout: ConfirmLayout };
+
 const PRESETS = [
   { label: "요약", prompt: "요약해줘" },
   { label: "번역", prompt: "한국어로 번역해줘" },
@@ -43,6 +61,9 @@ export function Converter() {
   const [custom, setCustom] = useState("");
   const [clipboardNote, setClipboardNote] = useState(false);
   const [ad, setAd] = useState(false);
+  const [step, setStep] = useState<Step>({ kind: "idle" });
+  const [missStreak, setMissStreak] = useState(0);
+  const [cookieOpen, setCookieOpen] = useState(true);
   const requestId = useRef(0);
 
   const loading = status.kind === "loading";
@@ -59,6 +80,37 @@ export function Converter() {
       document.title = original;
     };
   }, [loading]);
+
+  // 저장하지 않은 입력이나 결과가 있으면 탭을 닫거나 새로고침할 때 브라우저 확인창을 띄운다.
+  const dirty = url.trim() !== "" || result !== null;
+  useEffect(() => {
+    if (!dirty) return;
+    const guard = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty]);
+
+  function startConvert() {
+    if (loading || step.kind !== "idle") return;
+    setStep({ kind: "lottery", style: pickLotteryStyle() });
+  }
+
+  function drawLottery() {
+    if (draw(missStreak) === "win") {
+      setMissStreak(0);
+      setStep({ kind: "robot" });
+    } else {
+      setMissStreak(missStreak + 1);
+    }
+  }
+
+  function answerConfirm() {
+    setStep({ kind: "idle" });
+    void convert();
+  }
 
   async function convert() {
     if (loading) return;
@@ -86,6 +138,8 @@ export function Converter() {
 
   function clear() {
     requestId.current++;
+    setStep({ kind: "idle" });
+    setMissStreak(0);
     setUrl("");
     setStatus({ kind: "idle" });
     setPreset(null);
@@ -131,6 +185,8 @@ export function Converter() {
           <span key={name}>{name}</span>
         ))}
       </div>
+      {cookieOpen && <CookieBanner onClose={() => setCookieOpen(false)} />}
+      <AdPopups />
       <div className={`slide${ad ? " ad" : ""}`}>
         <div className="clip">
           <div className="pic">
@@ -145,8 +201,8 @@ export function Converter() {
           </div>
         </div>
 
-        <div className="t1">{text.t1}</div>
-        <div className="t2">{text.t2}</div>
+        <div className="t1 wordart">{text.t1}</div>
+        <div className="t2 wordart">{text.t2}</div>
         <div className="t3">{text.t3}</div>
         <div className="sub">PRESENTED BY 아무튼 서비스 ver 0.3 (beta?)</div>
 
@@ -161,11 +217,16 @@ export function Converter() {
             autoComplete="off"
           />{" "}
           이 빈칸에 붙여넣으세요. 붙여넣었으면{" "}
-          <span className="ac" onClick={() => void convert()}>
+          <span className="ac" onClick={startConvert}>
             변환
           </span>
-          을 한 번 클릭하세요. 그러면 페이지 본문이 마크다운으로 바뀌어 아래에 나타납니다. 처리하는 동안에는 화면에 아무 표시도 나오지 않지만 2초쯤 기다리면 됩니다.
+          을 한 번 클릭하세요. 그러면 뽑기, 로봇 확인, 변환 확인창을 차례로 거친 뒤 페이지 본문이 마크다운으로 바뀌어 아래에 나타납니다. 처리하는 동안에는 99%에서 멈춰 있는 진행률 바가 보이지만 끝나면 사라지니 2초쯤 기다리면 됩니다.
         </p>
+
+        {step.kind === "lottery" && <Lottery key={step.style} style={step.style} missStreak={missStreak} onDraw={drawLottery} />}
+        {step.kind === "robot" && <RobotCheck onPass={() => setStep({ kind: "confirm", layout: randomConfirmLayout() })} />}
+        {step.kind === "confirm" && <ConfirmDialog layout={step.layout} onAnswer={answerConfirm} />}
+        {loading && <FakeProgress />}
 
         {status.kind === "error" && (
           <p className="prose">
