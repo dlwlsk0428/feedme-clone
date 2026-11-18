@@ -1,9 +1,7 @@
 "use client";
 
-import { MoonIcon, SunIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-import { Button } from "@/components/ui/button";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 function subscribe(callback: () => void) {
@@ -12,6 +10,7 @@ function subscribe(callback: () => void) {
   return () => observer.disconnect();
 }
 
+// 보노보노 그림 위에 얹는 투명한 눈 영역. 누르면 라이트/다크가 바뀐다.
 export function ThemeToggle() {
   const dark = useSyncExternalStore(
     subscribe,
@@ -25,9 +24,5 @@ export function ThemeToggle() {
     localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
   }
 
-  return (
-    <Button variant="outline" size="icon" onClick={toggle} aria-label="다크모드 전환" title="다크모드 전환">
-      {dark ? <SunIcon /> : <MoonIcon />}
-    </Button>
-  );
+  return <div className="eyes" data-testid="eyes" data-dark={dark} onClick={toggle} />;
 }

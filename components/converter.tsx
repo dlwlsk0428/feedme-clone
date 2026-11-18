@@ -1,21 +1,12 @@
 "use client";
 
-import { AlertCircleIcon, CopyIcon, DownloadIcon, InfoIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import "@/components/bonobono.css";
 import { MarkdownView } from "@/components/markdown-view";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   composePayload,
-  LLM_TARGETS,
   markdownFileName,
   planLlmLaunch,
   type LlmTarget,
@@ -35,27 +26,39 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "done"; result: Result };
 
-const PRESETS = ["요약해줘", "한국어로 번역해줘", "쉽게 설명해줘"] as const;
+const PRESETS = [
+  { label: "요약", prompt: "요약해줘" },
+  { label: "번역", prompt: "한국어로 번역해줘" },
+  { label: "쉬운 설명", prompt: "쉽게 설명해줘" },
+] as const;
 const CUSTOM = "__custom";
+
+const NORMAL = { t1: "URL을 마크다운으로", t2: "하는 방법", t3: "(아마도)*^^*", plea: "구독과 좋아요해줄거지?", sticker: "NEW!!" };
+const AD = { t1: "위독하실 분", t2: "급구", t3: "URL변환전문대기업 [주]보노보노주식회사", plea: "지금 변환하세요", sticker: "미친" };
 
 export function Converter() {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [preset, setPreset] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
-  const [feedback, setFeedback] = useState("");
   const [clipboardNote, setClipboardNote] = useState(false);
+  const [ad, setAd] = useState(false);
   const requestId = useRef(0);
-
-  useEffect(() => {
-    if (!feedback) return;
-    const timer = setTimeout(() => setFeedback(""), 2500);
-    return () => clearTimeout(timer);
-  }, [feedback]);
 
   const loading = status.kind === "loading";
   const result = status.kind === "done" ? status.result : null;
   const prompt = preset === CUSTOM ? custom : (preset ?? "");
+  const text = ad ? AD : NORMAL;
+
+  // 변환 중의 유일한 피드백은 탭 제목이다.
+  useEffect(() => {
+    if (!loading) return;
+    const original = document.title;
+    document.title = "...";
+    return () => {
+      document.title = original;
+    };
+  }, [loading]);
 
   async function convert() {
     if (loading) return;
@@ -77,7 +80,7 @@ export function Converter() {
       );
     } catch {
       if (id !== requestId.current) return;
-      setStatus({ kind: "error", message: "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요." });
+      setStatus({ kind: "error", message: "서버에 연결하지 못했습니다." });
     }
   }
 
@@ -87,14 +90,15 @@ export function Converter() {
     setStatus({ kind: "idle" });
     setPreset(null);
     setCustom("");
-    setFeedback("");
     setClipboardNote(false);
   }
 
-  async function copy() {
-    if (!result) return;
-    await navigator.clipboard.writeText(result.markdown);
-    setFeedback("Markdown을 복사했습니다");
+  function writeClipboard(value: string) {
+    navigator.clipboard?.writeText(value).catch(() => {});
+  }
+
+  function copy() {
+    if (result) writeClipboard(result.markdown);
   }
 
   function download() {
@@ -104,184 +108,141 @@ export function Converter() {
     link.download = markdownFileName(result.title);
     link.click();
     URL.revokeObjectURL(link.href);
-    setFeedback(".md 파일을 내려받았습니다");
   }
 
   function openLlm(target: LlmTarget) {
     if (!result) return;
     const launch = planLlmLaunch(target, composePayload(prompt, result.markdown));
     window.open(launch.url, "_blank", "noopener");
-    if (launch.mode === "clipboard") {
-      void navigator.clipboard.writeText(launch.text);
-      setClipboardNote(true);
-      setFeedback(`클립보드에 복사했습니다. ${LLM_TARGETS[target].label}에 붙여넣으세요`);
-    } else {
-      setClipboardNote(false);
-      setFeedback(`${LLM_TARGETS[target].label} 새 대화를 엽니다`);
-    }
+    if (launch.mode === "clipboard") writeClipboard(launch.text);
+    setClipboardNote(launch.mode === "clipboard");
   }
 
   const meta = result
-    ? [result.author, result.site !== result.author ? result.site : "", result.wordCount ? `${result.wordCount.toLocaleString()} 단어` : ""]
+    ? [result.site !== result.author ? result.site : "", result.wordCount ? `${result.wordCount.toLocaleString()}단어` : ""]
         .filter(Boolean)
-        .join(" · ")
+        .join(", ")
     : "";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8 sm:px-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <h1 className="font-heading text-xl font-semibold tracking-tight">URL → Markdown</h1>
-          <p className="text-sm text-muted-foreground">
-            웹 페이지 본문을 Markdown으로 바꿔 LLM에 바로 넘깁니다.
-          </p>
+    <div className="ppt">
+      <div className="menubar">
+        {["파일", "편집", "보기", "삽입", "서식", "도구", "슬라이드 쇼", "도움말(없음)"].map((name) => (
+          <span key={name}>{name}</span>
+        ))}
+      </div>
+      <div className={`slide${ad ? " ad" : ""}`}>
+        <div className="clip">
+          <div className="pic">
+            {/* eslint-disable-next-line @next/next/no-img-element -- 투명 PNG를 그대로 쓴다 */}
+            <img src="/bonobono.png" alt="보노보노" />
+            <ThemeToggle />
+          </div>
+          <div className="eye-hint">보노보노 (그림 직접 그림)</div>
+          <span className="deco">🌀</span>
+          <div className="new" onClick={() => setAd((value) => !value)}>
+            {text.sticker}
+          </div>
         </div>
-        <ThemeToggle />
-      </header>
 
-      <form
-        className="flex flex-col gap-2 sm:flex-row"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void convert();
-        }}
-      >
-        <div className="relative flex-1">
-          <Input
+        <div className="t1">{text.t1}</div>
+        <div className="t2">{text.t2}</div>
+        <div className="t3">{text.t3}</div>
+        <div className="sub">PRESENTED BY 아무튼 서비스 ver 0.3 (beta?)</div>
+
+        <p className="prose">
+          읽고 싶은 웹 페이지의 주소를{" "}
+          <input
+            className="blank"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://example.com/article"
-            inputMode="url"
             aria-label="변환할 URL"
-            className="h-10 pr-10"
-          />
-          {(url || status.kind !== "idle") && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="absolute top-1 right-1"
-              onClick={clear}
-              aria-label="지우기"
-              title="지우기"
-            >
-              <XIcon />
-            </Button>
-          )}
-        </div>
-        <Button type="submit" size="lg" disabled={loading}>
-          {loading ? "변환 중…" : "변환하기"}
-        </Button>
-      </form>
+            spellCheck={false}
+            autoComplete="off"
+          />{" "}
+          이 빈칸에 붙여넣으세요. 붙여넣었으면{" "}
+          <span className="ac" onClick={() => void convert()}>
+            변환
+          </span>
+          을 한 번 클릭하세요. 그러면 페이지 본문이 마크다운으로 바뀌어 아래에 나타납니다. 처리하는 동안에는 화면에 아무 표시도 나오지 않지만 2초쯤 기다리면 됩니다.
+        </p>
 
-      {status.kind === "idle" && (
-        <Empty className="flex-none border border-dashed">
-          <EmptyHeader>
-            <EmptyTitle>변환할 URL을 입력하세요</EmptyTitle>
-            <EmptyDescription>
-              URL을 붙여넣고 변환하기를 누르면 본문이 여기에 나타납니다. 시도해 볼 주소: https://stephango.com/saw
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+        {status.kind === "error" && (
+          <p className="prose">
+            <span className="tiny">{status.message}</span>
+          </p>
+        )}
 
-      {loading && (
-        <Card role="status" aria-label="변환 중">
-          <CardHeader>
-            <Skeleton className="h-6 w-3/5" />
-            <Skeleton className="h-4 w-1/3" />
-          </CardHeader>
-          <div className="flex flex-col gap-3 px-5 pb-5">
-            <Skeleton className="h-4" />
-            <Skeleton className="h-4 w-11/12" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-        </Card>
-      )}
-
-      {status.kind === "error" && (
-        <Alert variant="destructive">
-          <AlertCircleIcon />
-          <AlertTitle>변환하지 못했습니다</AlertTitle>
-          <AlertDescription>{status.message}</AlertDescription>
-        </Alert>
-      )}
-
-      {result && (
-        <>
-          <Card className="gap-0 py-0">
-            <CardHeader className="border-b py-4">
-              <CardTitle className="text-xl leading-snug">{result.title}</CardTitle>
-              {meta && <CardDescription>{meta}</CardDescription>}
-            </CardHeader>
+        {result && (
+          <div className="result">
+            <p className="prose">
+              변환된 글의 제목은 <b>{result.title}</b>이고 글쓴이는 <span>{result.author || "알 수 없음"}</span>입니다.{" "}
+              <span className="tiny">({meta})</span> 아래 상자가 마크다운으로 바뀐 본문입니다.
+            </p>
             <MarkdownView>{result.markdown}</MarkdownView>
-          </Card>
+          </div>
+        )}
 
-          {clipboardNote && (
-            <Alert>
-              <InfoIcon />
-              <AlertTitle>본문이 길어 클립보드로 넘깁니다</AlertTitle>
-              <AlertDescription>
-                클립보드에 복사했으니 붙여넣으세요. LLM 새 대화가 열리면 입력란에 붙여넣기(Ctrl+V)하면 됩니다.
-              </AlertDescription>
-            </Alert>
-          )}
+        <p className="prose">
+          본문을 클립보드에 복사하려면{" "}
+          <span className="ac" onDoubleClick={copy}>
+            복사
+          </span>
+          를 두 번 연속 클릭하세요. 복사됐다는 알림은 나오지 않습니다. .md 파일로 저장하려면{" "}
+          <span className="ac" onClick={download}>
+            다운로드
+          </span>
+          를 한 번 클릭하세요. ChatGPT나 Claude에게 본문과 함께 시킬 일이 있다면 먼저{" "}
+          {PRESETS.map((item) => (
+            <span key={item.prompt}>
+              <span className="ac" onClick={() => setPreset(item.prompt)}>
+                {item.label}
+              </span>
+              {item.label === "쉬운 설명" ? " 중 하나를 클릭하세요. " : ", "}
+            </span>
+          ))}
+          고르면 표시는 없지만 선택된 것이고, 다른 것을 클릭하면 바뀝니다. 직접 쓰고 싶으면{" "}
+          <span className="ac" onClick={() => setPreset(CUSTOM)}>
+            직접 입력
+          </span>
+          을 클릭하고 나타나는 빈칸{" "}
+          {preset === CUSTOM && (
+            <input
+              className="blank"
+              style={{ width: "10em" }}
+              value={custom}
+              onChange={(event) => setCustom(event.target.value)}
+              aria-label="직접 입력 프롬프트"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          )}{" "}
+          에 쓰세요. 쓴 내용은 이번 한 번만 쓰이고 저장되지 않습니다. 마지막으로{" "}
+          <span className="ac" onClick={() => openLlm("chatgpt")}>
+            ChatGPT
+          </span>
+          를 한 번 클릭하거나{" "}
+          <span className="ac" onDoubleClick={() => openLlm("claude")}>
+            Claude
+          </span>
+          를 두 번 클릭하면 새 대화가 열리고 본문이 넘어갑니다. 글이 너무 길면 클립보드로 대신 복사되니 새 대화에 붙여넣기(Ctrl+V)하세요.
+        </p>
+        {clipboardNote && <span className="tiny">길어서 이미 복사됨(아마)</span>}
 
-          <Card className="sticky bottom-0 z-20 gap-3 p-3 shadow-lg" data-testid="export-bar">
-            {feedback && (
-              <div
-                role="status"
-                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-full bg-primary px-4 py-2 text-sm font-medium whitespace-nowrap text-primary-foreground shadow-lg"
-              >
-                {feedback}
-              </div>
-            )}
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-muted-foreground">프롬프트 (선택)</span>
-              <ToggleGroup
-                value={preset ? [preset] : []}
-                onValueChange={(values) => setPreset(values[0] ?? null)}
-                variant="outline"
-                size="sm"
-                spacing={2}
-                className="overflow-x-auto"
-                aria-label="프롬프트"
-              >
-                {PRESETS.map((name) => (
-                  <ToggleGroupItem key={name} value={name} className="shrink-0">
-                    {name}
-                  </ToggleGroupItem>
-                ))}
-                <ToggleGroupItem value={CUSTOM} className="shrink-0">
-                  직접 입력
-                </ToggleGroupItem>
-              </ToggleGroup>
-              {preset === CUSTOM && (
-                <Textarea
-                  value={custom}
-                  onChange={(event) => setCustom(event.target.value)}
-                  placeholder="LLM에게 시킬 내용을 입력하세요. 저장되지 않고 이번 한 번만 사용됩니다."
-                  aria-label="직접 입력 프롬프트"
-                />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => void copy()}>
-                <CopyIcon data-icon="inline-start" />
-                복사하기
-              </Button>
-              <Button variant="outline" onClick={download}>
-                <DownloadIcon data-icon="inline-start" />
-                .md 다운로드
-              </Button>
-              <span className="hidden flex-1 sm:block" />
-              <Button onClick={() => openLlm("chatgpt")}>ChatGPT로 열기</Button>
-              <Button onClick={() => openLlm("claude")}>Claude로 열기</Button>
-            </div>
-          </Card>
-        </>
-      )}
+        <p className="prose" style={{ marginTop: 18 }}>
+          처음부터 다시 하고 싶은 분은{" "}
+          <span className="ac" onClick={clear}>
+            처음으로 돌아가기
+          </span>
+          를 클릭하세요. 입력한 주소와 직접 쓴 내용이 모두 지워집니다. 눈이 아프신 분은 보노보노의 눈을 보시면 됩니다.
+        </p>
+
+        <span className="fish">🐟</span>
+        <div className="plea">{text.plea}</div>
+        <div className="ticker">
+          <span>★ 지금 URL을 넣으면 없던 마크다운이 생길 수도 있습니다 ★ 본 서비스는 보노보노와 관련이 없을 수도 있습니다</span>
+        </div>
+      </div>
     </div>
   );
 }
